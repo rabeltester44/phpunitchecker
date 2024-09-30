@@ -99,17 +99,9 @@ class PhpUnitScanner:
             try:
                 with open(file_path, 'r') as file:
                     domains = file.readlines()
-                for```python
                 for domain in domains:
                     self.mass_laravel(domain.strip())
             except FileNotFoundError:
                 print(f"File List {file_path} Not Found")
         elif option == '2':
-            domain = input("Your Site => ").strip()
-            self.laravel(domain)
-        else:
-            print("\n\tWhat happened??\n")
-
-if __name__ == "__main__":
-    scanner = PhpUnitScanner()
-    scanner.choose_option()
+            domain = input("Your Site =>
