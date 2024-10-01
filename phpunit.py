@@ -1,18 +1,23 @@
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import random
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class PhpUnitScanner:
     def __init__(self):
         self.base_url = "http://"
         self.endpoint_list_url = "https://raw.githubusercontent.com/rabeltester44/phpunitchecker/refs/heads/main/phpunit.txt"
-        self.user_agents = self.load_user_agents("user_agent.txt")
+        self.user_agents = self.load_user_agents("users_agents.txt")
 
     def load_user_agents(self, filename):
         try:
             with open(filename, 'r') as file:
                 return [line.strip() for line in file.readlines() if line.strip()]
         except FileNotFoundError:
-            print(f"User agent file {filename} not found.")
+            logging.error(f"User agent file {filename} not found.")
             return []
 
     def save(self, save, name):
@@ -20,21 +25,21 @@ class PhpUnitScanner:
             result_file.write(f"{save}\n")
 
     def check_url(self, web):
-        headers = {'User-Agent': self.user_agents[0]} if self.user_agents else {}
+        headers = {'User-Agent': random.choice(self.user_agents)} if self.user_agents else {}
         try:
             response = requests.head(web, headers=headers, allow_redirects=True, timeout=5)
             if response.status_code == 200:
                 return web, True
-        except requests.RequestException:
-            return web, False
+        except requests.RequestException as e:
+            logging.warning(f"Error checking URL {web}: {e}")
         return web, False
 
     def validate_path(self, web):
         try:
             response = requests.get(web, timeout=5)
-            # Cek apakah status 200 dan kontennya, bisa disesuaikan
             return response.status_code == 200
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logging.warning(f"Validation failed for {web}: {e}")
             return False
 
     def mass_laravel(self, domain):
@@ -45,12 +50,12 @@ class PhpUnitScanner:
             response.raise_for_status()
             endpoints = response.text.splitlines()
         except requests.RequestException as e:
-            print(f"Failed to retrieve the list of endpoints: {e}")
+            logging.error(f"Failed to retrieve the list of endpoints: {e}")
             return
 
         endpoints = [endpoint for endpoint in endpoints if endpoint.strip()]
 
-        with ThreadPoolExecutor(max_workers=100) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:  # Adjusted number of workers
             future_to_url = {executor.submit(self.check_url, full_url + endpoint.strip()): endpoint for endpoint in endpoints}
             for future in as_completed(future_to_url):
                 endpoint = future_to_url[future]
@@ -58,22 +63,18 @@ class PhpUnitScanner:
                 try:
                     url, found = future.result()
                     if found:
-                        # Simpan path valid
-                        print(f"\033[32m[+] Found => {url}\033[0m")
+                        logging.info(f"[+] Found => {url}")
                         self.save(url, "phpunit.txt")
                         
-                        # Validate the path by making a GET request
                         if self.validate_path(url):
-                            # Jika mengunjungi eval-stdin.php dan mendapat respons kosong, tetap simpan
                             if "eval-stdin.php" in url:
-                                print(f"\033[33m[!] Accessing eval-stdin.php, might be blank!\033[0m")
-                            # Jika tidak, tetap validasi dan cetak
+                                logging.warning(f"[!] Accessing eval-stdin.php, might be blank!")
                         else:
-                            print(f"\033[31m[-] Not Valid => {url}\033[0m")  # Mark as not valid
+                            logging.info(f"[-] Not Valid => {url}")
                     else:
-                        print(f"\033[31m[-] Not Found => {web}\033[0m")
+                        logging.info(f"[-] Not Found => {web}")
                 except Exception as e:
-                    print(f"Error checking {web}: {e}")
+                    logging.error(f"Error checking {web}: {e}")
 
     def choose_option(self):
         print("\n\t<!> Scan Laravel Phpunit Coded By ./EcchiExploit <!>")
@@ -90,15 +91,15 @@ class PhpUnitScanner:
                     for domain in domains:
                         self.mass_laravel(domain.strip())
             except FileNotFoundError:
-                print(f"File {file_path} not found.")
+                logging.error(f"File {file_path} not found.")
             except Exception as e:
-                print(f"Error reading file: {e}")
+                logging.error(f"Error reading file: {e}")
 
         elif option == '2':
             domain = input("Enter a single domain => ").strip()
             self.mass_laravel(domain)
         else:
-            print("Invalid option. Please choose 1 or 2.")
+            logging.error("Invalid option. Please choose 1 or 2.")
 
 if __name__ == "__main__":
     scanner = PhpUnitScanner()
