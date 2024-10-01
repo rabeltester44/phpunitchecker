@@ -5,7 +5,7 @@ class PhpUnitScanner:
     def __init__(self):
         self.base_url = "http://"
         self.endpoint_list_url = "https://raw.githubusercontent.com/rabeltester44/phpunitchecker/refs/heads/main/phpunit.txt"
-        self.user_agents = self.load_user_agents("user_agent.txt")
+        self.user_agents = self.load_user_agents("users_agents.txt")
 
     def load_user_agents(self, filename):
         try:
