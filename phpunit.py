@@ -32,9 +32,12 @@ class PhpUnitScanner:
     def validate_path(self, web):
         try:
             response = requests.get(web, timeout=5)
-            return response.status_code == 200
+            # Cek apakah status 200 dan apakah konten tidak mengandung elemen yang menunjukkan error
+            if response.status_code == 200 and "DOCTYPE" not in response.text:
+                return True
         except requests.RequestException:
             return False
+        return False
 
     def mass_laravel(self, domain):
         full_url = self.base_url + domain
