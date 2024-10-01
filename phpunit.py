@@ -5,7 +5,7 @@ class PhpUnitScanner:
     def __init__(self):
         self.base_url = "http://"
         self.endpoint_list_url = "https://raw.githubusercontent.com/rabeltester44/phpunitchecker/refs/heads/main/phpunit.txt"
-        self.user_agents = self.load_user_agents("users_agents.txt")
+        self.user_agents = self.load_user_agents("user_agent.txt")
 
     def load_user_agents(self, filename):
         try:
@@ -32,12 +32,10 @@ class PhpUnitScanner:
     def validate_path(self, web):
         try:
             response = requests.get(web, timeout=5)
-            # Cek apakah status 200 dan apakah konten tidak mengandung elemen yang menunjukkan error
-            if response.status_code == 200 and "DOCTYPE" not in response.text:
-                return True
+            # Cek apakah status 200 dan kontennya, bisa disesuaikan
+            return response.status_code == 200
         except requests.RequestException:
             return False
-        return False
 
     def mass_laravel(self, domain):
         full_url = self.base_url + domain
@@ -52,22 +50,24 @@ class PhpUnitScanner:
 
         endpoints = [endpoint for endpoint in endpoints if endpoint.strip()]
 
-        valid_path_found = False
         with ThreadPoolExecutor(max_workers=100) as executor:
             future_to_url = {executor.submit(self.check_url, full_url + endpoint.strip()): endpoint for endpoint in endpoints}
             for future in as_completed(future_to_url):
-                if valid_path_found:
-                    break
                 endpoint = future_to_url[future]
                 web = full_url + endpoint.strip()
                 try:
                     url, found = future.result()
                     if found:
+                        # Simpan path valid
+                        print(f"\033[32m[+] Found => {url}\033[0m")
+                        self.save(url, "phpunit.txt")
+                        
                         # Validate the path by making a GET request
                         if self.validate_path(url):
-                            valid_path_found = True
-                            print(f"\033[32m[+] Found => {url}\033[0m")
-                            self.save(url, "phpunit.txt")
+                            # Jika mengunjungi eval-stdin.php dan mendapat respons kosong, tetap simpan
+                            if "eval-stdin.php" in url:
+                                print(f"\033[33m[!] Accessing eval-stdin.php, might be blank!\033[0m")
+                            # Jika tidak, tetap validasi dan cetak
                         else:
                             print(f"\033[31m[-] Not Valid => {url}\033[0m")  # Mark as not valid
                     else:
