@@ -5,7 +5,7 @@ class PhpUnitScanner:
     def __init__(self):
         self.base_url = "http://"
         self.endpoint_list_url = "https://raw.githubusercontent.com/rabeltester44/phpunitchecker/refs/heads/main/phpunit.txt"
-        self.user_agents = self.load_user_agents("users_agents.txt")
+        self.user_agents = self.load_user_agents("user_agent.txt")
 
     def load_user_agents(self, filename):
         try:
@@ -29,6 +29,13 @@ class PhpUnitScanner:
             return web, False
         return web, False
 
+    def validate_path(self, web):
+        try:
+            response = requests.get(web, timeout=5)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+
     def mass_laravel(self, domain):
         full_url = self.base_url + domain
 
@@ -40,25 +47,28 @@ class PhpUnitScanner:
             print(f"Failed to retrieve the list of endpoints: {e}")
             return
 
-        # Filter out unwanted paths if necessary
         endpoints = [endpoint for endpoint in endpoints if endpoint.strip()]
 
-        valid_path_found = False  # Track if a valid path is found
+        valid_path_found = False
         with ThreadPoolExecutor(max_workers=100) as executor:
             future_to_url = {executor.submit(self.check_url, full_url + endpoint.strip()): endpoint for endpoint in endpoints}
             for future in as_completed(future_to_url):
-                if valid_path_found:  # Stop processing if a valid path has already been found
+                if valid_path_found:
                     break
                 endpoint = future_to_url[future]
                 web = full_url + endpoint.strip()
                 try:
                     url, found = future.result()
-                    if found and not valid_path_found:
-                        valid_path_found = True  # Mark that we found a valid path
-                        print(f"\033[32m[+] Found => {url}\033[0m")
-                        self.save(url, "phpunit.txt")
+                    if found:
+                        # Validate the path by making a GET request
+                        if self.validate_path(url):
+                            valid_path_found = True
+                            print(f"\033[32m[+] Found => {url}\033[0m")
+                            self.save(url, "phpunit.txt")
+                        else:
+                            print(f"\033[31m[-] Not Valid => {url}\033[0m")  # Mark as not valid
                     else:
-                        print(f"\033[31m[-] Not Found => {web}\033[0m")  # Explicitly mark not found paths
+                        print(f"\033[31m[-] Not Found => {web}\033[0m")
                 except Exception as e:
                     print(f"Error checking {web}: {e}")
 
